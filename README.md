@@ -1,4 +1,4 @@
-# Event Ticketing and Booking: Course Capstone
+# Event Management: Course Capstone
 
 **Organizers publish events. Attendees buy tickets. Staff check people in with QR codes.**
 
@@ -43,7 +43,7 @@ You will add at least one entry in every build. It counts toward your grade.
 
 ## The nine Build classes
 
-The capstone is built in nine Build classes, one milestone each. Every class follows the same four steps: a short gap lesson, prompt and build, review, ship. The full list of what each class delivers and when it is done is in [docs/milestones.md](docs/milestones.md).
+The capstone is built in nine Build classes, one milestone each. Every class follows the same four steps: a short gap lesson, prompt and build, review, ship.
 
 | Build | Class | You deliver | New ideas taught first |
 | --- | --- | --- | --- |
@@ -69,82 +69,10 @@ For every Build class, work on a branch named `build-N` (for example `build-2`),
 - **Tests:** Node's built-in test runner
 - No outside packages are needed. Check your Node version with `node --version`.
 
-## Build 1: run it
+## Getting Started
 
-Build 1 is the domain core: the rules of booking, running in the terminal. There is no website, API or database yet. Those arrive in later builds.
-
-### 1. Check Node
+To run this project locally:
 
 ```bash
-node --version      # must print v22.13.0 or higher
-```
-
-If it is lower, install the current LTS from https://nodejs.org and open a new terminal.
-
-### 2. Get the code
-
-```bash
-git clone https://github.com/dejibimbolaAyo/das-2026-capstone-project.git
-cd das-2026-capstone-project
-```
-
-There is nothing to `npm install`. The project uses no outside packages.
-
-### 3. Run the demo
-
-```bash
-npm run demo
-```
-
-You should see Ada book 2 of 3 seats, Bayo refused for asking for 2 when only 1 is left (`SOLD_OUT`), the event sell out, two people join the waitlist, a booking found by its reference, and Ada's cancellation freeing seats so the waitlist shows who is next. The reference code and ids change on every run. That is expected.
-
-### 4. Run the benchmark
-
-```bash
-npm run benchmark
-```
-
-It looks up 500 bookings among 100,000, once with `Array.find` and once with `Map.get`. The exact times depend on your computer, but the Map should be hundreds of times faster. Open `scripts/benchmark-lookup.js`, double `BOOKINGS`, and run it again. Which number grows, and which stays flat?
-
-### 5. Read the code
-
-Read in this order:
-
-1. `src/domain/errors.js`: one error type with a code, such as `SOLD_OUT`.
-2. `src/domain/ids.js`: ids and booking references.
-3. `src/domain/inventory.js`: tiers, seats left, and the booking rules.
-4. `src/domain/waitlistQueue.js`: a first-in-first-out queue built from a linked list.
-5. `scripts/demo.js`: how the pieces are used together.
-
-### If something goes wrong
-
-| You see | Do this |
-|---|---|
-| `command not found: node` | Install Node (step 1). |
-| `SyntaxError: Cannot use import statement` or an unknown-option error | Your Node is too old. Upgrade to 22.13 or higher. |
-| `Cannot find module` | You are in the wrong folder. Run `pwd` and `cd` into the project root, where `package.json` is. |
-
-### Your Build 1 task
-
-Follow the "Done when" list in [docs/build-1.md](docs/build-1.md). Work on a branch called `build-1`, add your first entry to `docs/ai-log.md`, and open a pull request into `main`.
-
-## Documents
-
-- [docs/milestones.md](docs/milestones.md): the nine Builds at a glance, with a glossary.
-- [docs/build-1.md](docs/build-1.md) to [docs/build-9.md](docs/build-9.md): one file per Build, with its deliverables and its user stories with acceptance criteria.
-- [docs/user-stories.md](docs/user-stories.md): the product backlog and the definition of done.
-
-## Rules of the road
-
-- Work on a branch called `build-N`, open a pull request, merge to `main`. Do not push straight to `main`.
-- Never commit secrets, passwords or `.env` files.
-- Money is stored as whole numbers of the smallest unit (kobo or cents), never as decimals.
-- You are responsible for every line of your project, including the lines the AI wrote.
-
-## Project layout
-
-```
-src/domain/     plain rules: no I/O, no HTTP
-scripts/        things you run by hand
-docs/           milestones and user stories
-```
+git clone https://github.com/Stoneofsuccor/DSA-code-camp.git
+cd DSA-code-camp
