@@ -3,11 +3,18 @@ import { createRouter } from './http/router.js';
 import { sendError, serveStatic, readJsonBody } from './http/app.js';
 import { config } from './config.js';
 import { DomainError } from './domain/errors.js';
-import { createMemoryRepository } from './repositories/memory.js';
-import { createEventService } from './services/eventService.js';
-import { createBookingService } from './services/bookingService.js';
 
-const repo = createMemoryRepository();
+// --- SQLITE SETUP ---
+import { createDatabaseConnection } from './db/connection.js';
+import { createSqliteRepository } from './repositories/sqlite.js';
+
+// --- SERVICES SETUP ---
+import { createEventService } from './services/eventService.js';
+import { createBookingService } from './services/bookingService.js'; // <-- Added missing import
+
+// Initialize DB and Services
+const db = createDatabaseConnection('database.sqlite');
+const repo = createSqliteRepository(db);
 const eventService = createEventService(repo);
 const bookingService = createBookingService(repo);
 
@@ -96,12 +103,11 @@ const server = createServer(async (req, res) => {
     console.error(error);
     if (!res.headersSent) {
       if (error instanceof DomainError) {
-        // Map error codes to HTTP status codes
         let status = 400;
         if (error.code === 'NOT_FOUND') status = 404;
         if (error.code === 'FORBIDDEN') status = 403;
         if (error.code === 'SOLD_OUT') status = 409;
-        if (error.code === 'PAYMENT_DECLINED') status = 402; // Payment Required
+        if (error.code === 'PAYMENT_DECLINED') status = 402;
         
         sendError(res, status, error.code, error.message);
       } else {
