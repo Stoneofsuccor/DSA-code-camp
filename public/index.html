@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Ticketing - Home</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Discover Events</h1>
+  </header>
+  <main>
+    <section class="filters" aria-label="Event Filters">
+      <form id="filter-form">
+        <div class="form-group">
+          <label for="search">Search</label>
+          <input type="text" id="search" placeholder="Title or venue...">
+        </div>
+        <div class="form-group">
+          <label for="city">City</label>
+          <input type="text" id="city" placeholder="e.g. Lagos">
+        </div>
+        <div class="form-group">
+          <label for="max-price">Max Price (kobo)</label>
+          <input type="number" id="max-price" placeholder="e.g. 500000">
+        </div>
+        <div class="form-group">
+          <label for="sort">Sort By</label>
+          <select id="sort">
+            <option value="date">Date (Earliest)</option>
+            <option value="price">Price (Cheapest)</option>
+            <option value="availability">Seats Left</option>
+          </select>
+        </div>
+      </form>
+    </section>
+
+    <section id="event-list" class="event-grid" aria-live="polite">
+      <!-- Events will be injected here by JS -->
+    </section>
+  </main>
+  <script type="module" src="/js/pages/home.js"></script>
+</body>
+</html>
