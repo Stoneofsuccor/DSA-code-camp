@@ -1,5 +1,5 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { join, extname } from 'node:path';
+import { join, extname, resolve, normalize } from 'node:path';
 import { DomainError } from '../domain/errors.js';
 
 const MIME_TYPES = {
@@ -11,32 +11,33 @@ const MIME_TYPES = {
   '.jpg': 'image/jpeg'
 };
 
-/**
- * A helper to enforce the exact error shape: {"error":{"code","message"}}
- */
 export function sendError(res, status, code, message) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: { code, message } }));
 }
 
-/**
- * Serves static files securely from the /public folder.
- */
 export function serveStatic(req, res, publicDir) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   let filePath = url.pathname;
   
   if (filePath === '/') filePath = '/index.html';
 
-  // SECURITY: Prevent path traversal attacks (e.g., /../../etc/passwd)
-  const safePath = join(publicDir, filePath);
-  if (!safePath.startsWith(publicDir)) {
+  // Normalize fixes Windows backslash issues
+  const safePublicDir = normalize(resolve(publicDir));
+  const safePath = normalize(resolve(join(safePublicDir, filePath)));
+
+  // SECURITY: Prevent path traversal
+  if (!safePath.startsWith(safePublicDir)) {
     sendError(res, 403, 'FORBIDDEN', 'Access denied.');
-    return;
+    return true;
   }
 
+  // Debugging log
+  console.log(`Serving static file: ${safePath}`);
+
   if (!existsSync(safePath) || !statSync(safePath).isFile()) {
-    return false; // Let the caller decide how to handle a missing static file
+    console.log(`❌ File NOT found: ${safePath}`);
+    return false; 
   }
 
   const ext = extname(safePath).toLowerCase();
@@ -47,9 +48,7 @@ export function serveStatic(req, res, publicDir) {
   return true;
 }
 
-/**
- * A helper to safely read JSON body from a request.
- */
+// --- RESTORED THIS FUNCTION ---
 export function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';

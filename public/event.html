@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Details</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <a href="/" class="back-link">&larr; Back to Events</a>
+    <h1 id="event-title">Loading...</h1>
+    <p id="event-meta"></p>
+  </header>
+  <main>
+    <section id="tiers-section">
+      <h2>Select Tickets</h2>
+      <div id="tier-list"></div>
+    </section>
+
+    <!-- Checkout Section (Hidden by default) -->
+    <section id="checkout-section" class="hidden">
+      <h2>Checkout</h2>
+      <div id="countdown" class="countdown-banner"></div>
+      
+      <div class="payment-box">
+        <label for="card-number">Mock Card Number (Ends in 0000 to decline)</label>
+        <input type="text" id="card-number" value="4242 4242 4242 0000" readonly>
+        
+        <p>Total: <strong id="checkout-total">₦0</strong></p>
+        <button id="pay-btn">Pay Now</button>
+        <p id="payment-error" class="error-text hidden"></p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/js/pages/event.js"></script>
+</body>
+</html>

@@ -38,3 +38,10 @@ As stated in your course README: *"The AI writing the code is not the skill bein
 - **What I asked:** Move the in-memory repository to SQLite, create the schema with constraints, and fix the overselling bug using an atomic database update.
 - **What came back:** The schema, connection, SQLite repository, and the oversell demo script and test.
 - **What was wrong (or "nothing"):** The first time I ran `npm start`, I got an `EADDRINUSE` error because my old server was still running. I also had a missing import for `createEventService` in `server.js` which caused a `ReferenceError`. Both were fixed quickly. The atomic update works perfectly. If a JS lock variable was used, the event loop would still allow multiple requests to pass the check before the deduction, which is why we do it in the database.
+
+## Build 6
+
+### Prompt 1: Frontend on mock data
+- **What I asked:** Create the HTML, CSS, and ES modules for the frontend, using mock data for events and payments.
+- **What came back:** The DOM structure, styles, API mock layer, and UI logic for home and event pages.
+- **What was wrong (or "nothing"):** The initial static file server code triggered a `FORBIDDEN` error on Windows due to path normalization. I fixed this by using `normalize()` and `resolve()` in `app.js`. I also had a typo in my `styles.css` filename which the server logs helped me find.
