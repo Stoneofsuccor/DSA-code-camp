@@ -24,3 +24,17 @@ As stated in your course README: *"The AI writing the code is not the skill bein
 - **What I asked:** Add the HTTP router, server, state machine, and tests.
 - **What came back:** The router, server, and 22 passing tests.
 - **What was wrong:** The server crashed with `ERR_HTTP_HEADERS_SENT` when hitting an unknown API route because the router wasn't returning `true` after sending a 404. I fixed the router to return `true`, and added a check `if (!res.headersSent)` in the server error handler to prevent crashes.
+
+## Build 4
+
+### Prompt 1: Build 4 REST API
+- **What I asked:** Build the in-memory REST API, separating routes from rules using services and repositories, and add the mock payment gateway.
+- **What came back:** The repository, services, gateway, updated server with routes, and API tests.
+- **What was wrong (or "nothing"):** Nothing was functionally wrong. However, when testing with `curl`, I had to ensure the server was running in a separate terminal before making requests. I also verified the `PAYMENT_DECLINED` logic by adding a tier that costs exactly 999 cents.
+
+## Build 5
+
+### Prompt 1 & 2: SQLite and Overselling Fix
+- **What I asked:** Move the in-memory repository to SQLite, create the schema with constraints, and fix the overselling bug using an atomic database update.
+- **What came back:** The schema, connection, SQLite repository, and the oversell demo script and test.
+- **What was wrong (or "nothing"):** The first time I ran `npm start`, I got an `EADDRINUSE` error because my old server was still running. I also had a missing import for `createEventService` in `server.js` which caused a `ReferenceError`. Both were fixed quickly. The atomic update works perfectly. If a JS lock variable was used, the event loop would still allow multiple requests to pass the check before the deduction, which is why we do it in the database.

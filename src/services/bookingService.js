@@ -16,26 +16,24 @@ export function createBookingService(repository) {
         throw new DomainError('VALIDATION', 'Quantity must be 1-10');
       }
 
-      const seatsLeft = tier.capacity - tier.booked;
-      if (quantity > seatsLeft) throw new DomainError('SOLD_OUT', 'Not enough seats');
+      // REPLACED JS CHECK WITH ATOMIC DB UPDATE
+      const reserved = await repository.reserveSeatAtomic(tierId, quantity);
+      if (!reserved) {
+        throw new DomainError('SOLD_OUT', 'Not enough seats');
+      }
 
-      // All validations passed. Create the booking.
       const reference = crypto.randomUUID().slice(0, 6).toUpperCase();
       const booking = {
         reference,
         eventId,
         tierId,
         quantity,
-        userId, // Track who made the booking
-        status: STATES.PENDING, // Uses the state machine constants
-        amountCents: tier.priceInCents * quantity
+        userId,
+        status: STATES.PENDING,
+        amountCents: tier.price_in_cents * quantity // Note: SQLite returns snake_case!
       };
 
-      // Mutate state
-      tier.booked += quantity;
-      await repository.saveEvent(event); // Save mutated event
       await repository.saveBooking(booking);
-      
       return booking;
     },
 
@@ -43,24 +41,20 @@ export function createBookingService(repository) {
       const booking = await repository.getBookingByReference(reference);
       if (!booking) throw new DomainError('NOT_FOUND', 'Booking not found');
       
-      // Rule: Only the person who made it can pay
       if (booking.userId !== userId) {
         throw new DomainError('FORBIDDEN', 'You do not own this booking');
       }
 
-      // Rule: State machine check (e.g., can't pay a cancelled booking)
       assertTransition(booking.status, STATES.PAID);
 
-      // Call the mock gateway
       const paymentResult = await mockPaymentGateway.charge(booking.amountCents);
       
       if (!paymentResult.success) {
-        // Rule: Declined card leaves booking pending
         throw new DomainError('PAYMENT_DECLINED', 'Card declined');
       }
 
       booking.status = STATES.PAID;
-      await repository.saveBooking(booking);
+      await repository.updateBookingStatus(reference, STATES.PAID);
       return booking;
     },
 
@@ -70,20 +64,14 @@ export function createBookingService(repository) {
       
       if (booking.userId !== userId) throw new DomainError('FORBIDDEN', 'You do not own this booking');
 
-      // Rule: For Build 4, only unpaid (pending) bookings can be cancelled
       if (booking.status !== STATES.PENDING) {
         throw new DomainError('INVALID_TRANSITION', 'Only pending bookings can be cancelled');
       }
 
-      const event = await repository.getEventById(booking.eventId);
-      const tier = event.tiers.get(booking.tierId);
-
-      // Release seats
-      tier.booked -= booking.quantity;
+      // In Build 5, we just update the booking status. 
+      // In Build 8, we will write the code to add the seats back to the tier.
+      await repository.updateBookingStatus(reference, STATES.CANCELLED);
       booking.status = STATES.CANCELLED;
-      
-      await repository.saveEvent(event);
-      await repository.saveBooking(booking);
       return booking;
     }
   };

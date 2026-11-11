@@ -4,13 +4,18 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-  "scripts": {
+"scripts": {
+    "test": "node --test test/",
+    "start": "node src/server.js",
     "demo": "node scripts/demo.js",
     "benchmark": "node scripts/benchmark-lookup.js",
-    "test": "node --test test",
-    "start": "node src/server.js"
+    "seed": "node scripts/seed.js",
+    "oversell": "node scripts/oversell-demo.js"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
+  }
 }
