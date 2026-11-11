@@ -1,41 +1,109 @@
 import { createServer } from 'node:http';
 import { createRouter } from './http/router.js';
-import { sendError, serveStatic } from './http/app.js';
+import { sendError, serveStatic, readJsonBody } from './http/app.js';
 import { config } from './config.js';
-import { DomainError } from './domain/errors.js'; // <-- ADDED THIS IMPORT
+import { DomainError } from './domain/errors.js';
+import { createMemoryRepository } from './repositories/memory.js';
+import { createEventService } from './services/eventService.js';
+import { createBookingService } from './services/bookingService.js';
+
+const repo = createMemoryRepository();
+const eventService = createEventService(repo);
+const bookingService = createBookingService(repo);
 
 const router = createRouter();
 
-// 1. Define API Routes
+// --- API ROUTES ---
+
 router.get('/health', (req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ status: 'ok' }));
 });
 
-// 2. Create the HTTP Server
+// 1. Create Event
+router.post('/api/events', async (req, res) => {
+  const body = await readJsonBody(req);
+  const event = await eventService.createEvent(body.title, body.city, body.venue, body.date);
+  res.writeHead(201, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(event));
+});
+
+// 2. Add Tier
+router.post('/api/events/:id/tiers', async (req, res) => {
+  const body = await readJsonBody(req);
+  const tier = await eventService.addTier(req.params.id, body.name, body.priceInCents, body.capacity);
+  res.writeHead(201, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(tier));
+});
+
+// 3. Publish Event
+router.post('/api/events/:id/publish', async (req, res) => {
+  const event = await eventService.publish(req.params.id);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(event));
+});
+
+// 4. Search Events
+router.get('/api/events', async (req, res) => {
+  const results = await eventService.search(req.query);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(results));
+});
+
+// 5. Book Tickets
+router.post('/api/bookings', async (req, res) => {
+  const userId = req.headers['x-user-id'];
+  if (!userId) throw new DomainError('VALIDATION', 'x-user-id header required');
+  
+  const body = await readJsonBody(req);
+  const booking = await bookingService.bookTickets(body.eventId, body.tierId, body.quantity, userId);
+  res.writeHead(201, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(booking));
+});
+
+// 6. Pay Booking
+router.post('/api/bookings/:reference/pay', async (req, res) => {
+  const userId = req.headers['x-user-id'];
+  if (!userId) throw new DomainError('VALIDATION', 'x-user-id header required');
+  
+  const booking = await bookingService.payBooking(req.params.reference, userId);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(booking));
+});
+
+// 7. Cancel Booking
+router.post('/api/bookings/:reference/cancel', async (req, res) => {
+  const userId = req.headers['x-user-id'];
+  if (!userId) throw new DomainError('VALIDATION', 'x-user-id header required');
+  
+  const booking = await bookingService.cancelBooking(req.params.reference, userId);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(booking));
+});
+
+// --- SERVER STARTUP ---
+
 const server = createServer(async (req, res) => {
   try {
-    // Try to match an API route first
     const handledByApi = await router.handle(req, res);
-    if (handledByApi !== false) return; // Request was handled by the router
+    if (handledByApi !== false) return;
 
-    // If no API matched, try serving a static file from /public
     const handledByStatic = serveStatic(req, res, config.publicDir);
     if (handledByStatic) return;
 
-    // If nothing matched, send a 404 (only if headers haven't been sent yet)
-    if (!res.headersSent) {
-      sendError(res, 404, 'NOT_FOUND', 'Page not found');
-    }
-
+    if (!res.headersSent) sendError(res, 404, 'NOT_FOUND', 'Page not found');
   } catch (error) {
-    // GLOBAL ERROR HANDLER: Never leak stack traces to the client!
-    console.error(error); // Log it locally for the developer
-
-    // Only send an error response if we haven't already started sending one
+    console.error(error);
     if (!res.headersSent) {
       if (error instanceof DomainError) {
-        sendError(res, 400, error.code, error.message);
+        // Map error codes to HTTP status codes
+        let status = 400;
+        if (error.code === 'NOT_FOUND') status = 404;
+        if (error.code === 'FORBIDDEN') status = 403;
+        if (error.code === 'SOLD_OUT') status = 409;
+        if (error.code === 'PAYMENT_DECLINED') status = 402; // Payment Required
+        
+        sendError(res, status, error.code, error.message);
       } else {
         sendError(res, 500, 'INTERNAL_ERROR', 'Something went wrong.');
       }
@@ -43,7 +111,6 @@ const server = createServer(async (req, res) => {
   }
 });
 
-// 3. Start the server
 server.listen(config.port, () => {
   console.log(`Server running at http://localhost:${config.port}`);
 });
