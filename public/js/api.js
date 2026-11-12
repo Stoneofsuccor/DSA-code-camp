@@ -1,57 +1,113 @@
-import { mockEvents } from './mockData.js';
+const BASE_URL = '/api';
 
-// Simulate network delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+function getToken() {
+  return localStorage.getItem('token');
+}
 
-export async function listEvents(criteria) {
-  await delay(200);
-  // Basic filtering for the mock data
-  let results = mockEvents.filter(e => e.status === 'published');
-  
-  if (criteria.q) {
-    const q = criteria.q.toLowerCase();
-    results = results.filter(e => e.title.toLowerCase().includes(q) || e.venue.toLowerCase().includes(q));
-  }
-  if (criteria.city) {
-    results = results.filter(e => e.city.toLowerCase() === criteria.city.toLowerCase());
+export async function listEvents(params = {}) {
+  // Remove any keys that are empty strings, undefined, or null
+  const cleanParams = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      cleanParams[key] = value;
+    }
   }
   
-  // Map to summaries
-  return results.map(e => {
-    let cheapest = Math.min(...e.tiers.map(t => t.priceInCents));
-    let seatsLeft = e.tiers.reduce((sum, t) => sum + (t.capacity - t.sold), 0);
-    return {
-      id: e.id, title: e.title, city: e.city, venue: e.venue, date: e.date,
-      cheapestPriceCents: cheapest, seatsLeft
-    };
-  });
+  const query = new URLSearchParams(cleanParams).toString();
+  const res = await fetch(`${BASE_URL}/events?${query}`);
+  if (!res.ok) throw new Error('Failed to load events');
+  return res.json();
 }
 
 export async function getEvent(eventId) {
-  await delay(200);
-  const event = mockEvents.find(e => e.id === eventId);
-  if (!event) throw new Error('Event not found');
-  
-  // Add calculated fields
-  return {
-    ...event,
-    tiers: event.tiers.map(t => ({
-      ...t,
-      seatsLeft: t.capacity - t.sold
-    }))
-  };
+  const res = await fetch(`${BASE_URL}/events/${eventId}`);
+  if (!res.ok) throw new Error('Event not found');
+  return res.json();
 }
 
 export async function createBooking(eventId, tierId, quantity) {
-  await delay(300);
-  return { reference: 'REF' + Math.floor(Math.random() * 10000), quantity };
+  const res = await fetch(`${BASE_URL}/bookings`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getToken()}` 
+    },
+    body: JSON.stringify({ eventId, tierId, quantity })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Booking failed');
+  return data;
 }
 
 export async function pay(reference, cardNumber) {
-  await delay(500);
-  // Rule: Declined mock card
-  if (cardNumber.endsWith('0000')) {
-    throw new Error('PAYMENT_DECLINED');
+  const res = await fetch(`${BASE_URL}/bookings/${reference}/pay`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${getToken()}` }
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    if (data.error?.code === 'PAYMENT_DECLINED') throw new Error('PAYMENT_DECLINED');
+    throw new Error(data.error?.message || 'Payment failed');
   }
-  return { status: 'paid', reference };
+  return data;
+}
+
+export async function login(email, password) {
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Login failed');
+  return data;
+}
+
+export async function signup(email, password, role) {
+  const res = await fetch(`${BASE_URL}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, role })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Signup failed');
+  return data;
+}
+
+export async function createEvent(data) {
+  const res = await fetch(`${BASE_URL}/events`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getToken()}` 
+    },
+    body: JSON.stringify(data)
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error?.message || 'Failed to create event');
+  return result;
+}
+
+export async function addTier(eventId, name, priceInCents, capacity) {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/tiers`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getToken()}` 
+    },
+    body: JSON.stringify({ name, priceInCents, capacity })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Failed to add tier');
+  return data;
+}
+
+export async function publishEvent(eventId) {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/publish`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${getToken()}` }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Failed to publish');
+  return data;
 }

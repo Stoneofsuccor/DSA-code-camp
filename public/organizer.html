@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Organizer Dashboard</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Organizer Dashboard</h1>
+    <div>
+      <a href="/" style="color: white; margin-right: 1rem;">Home</a>
+      <button id="logout-btn" style="background: transparent; border: 1px solid white; color: white; padding: 0.5rem; cursor: pointer;">Logout</button>
+    </div>
+  </header>
+  
+  <main>
+    <section class="auth-container">
+      <h2>Create New Event</h2>
+      
+      <!-- The Create Event Form -->
+      <form id="create-event-form">
+        <div class="form-group">
+          <label for="title">Event Title</label>
+          <input type="text" id="title" required>
+        </div>
+        <div class="form-group">
+          <label for="city">City</label>
+          <input type="text" id="city" required>
+        </div>
+        <div class="form-group">
+          <label for="venue">Venue</label>
+          <input type="text" id="venue" required>
+        </div>
+        <div class="form-group">
+          <label for="date">Date & Time</label>
+          <input type="datetime-local" id="date" required>
+        </div>
+        <button type="submit" class="btn">Create Event</button>
+        <p id="event-error" class="error-text" style="margin-top: 1rem;"></p>
+      </form>
+
+      <!-- The Manage Section (Hidden until event is created) -->
+      <div id="manage-section" class="hidden" style="margin-top: 1rem; padding: 1rem; background: #e0f2fe; border-radius: 4px;">
+        <p id="event-success" class="success-text" style="font-weight: bold; color: #0369a1;"></p>
+        
+        <div style="margin-top: 1rem; border-top: 1px solid #bae6fd; padding-top: 1rem;">
+          <h4>Add Ticket Tier</h4>
+          <input type="text" id="tier-name" placeholder="Tier Name (e.g. VIP)" style="margin-bottom: 0.5rem; width: 100%;">
+          <input type="number" id="tier-price" placeholder="Price in Cents (e.g. 5000)" style="margin-bottom: 0.5rem; width: 100%;">
+          <input type="number" id="tier-capacity" placeholder="Capacity (e.g. 100)" style="margin-bottom: 0.5rem; width: 100%;">
+          <button type="button" id="add-tier-btn" class="btn" style="width: 100%;">Add Tier</button>
+        </div>
+
+        <div style="margin-top: 1rem;">
+          <button type="button" id="publish-btn" class="btn" style="width: 100%; background: #059669;">Publish Event</button>
+        </div>
+        
+        <p id="manage-error" class="error-text" style="margin-top: 0.5rem;"></p>
+      </div>
+
+    </section>
+  </main>
+
+  <script type="module" src="/js/pages/organizer.js"></script>
+</body>
+</html>

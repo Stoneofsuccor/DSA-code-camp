@@ -7,8 +7,12 @@
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-  <header>
+   <header style="display: flex; justify-content: space-between; align-items: center;">
     <h1>Discover Events</h1>
+    <div id="nav-links">
+      <!-- This will be populated by JavaScript to show either Login or Logout/My Tickets -->
+      <a href="/login.html" style="color: white; text-decoration: none; font-weight: bold;">Login / Sign Up</a>
+    </div>
   </header>
   <main>
     <section class="filters" aria-label="Event Filters">
