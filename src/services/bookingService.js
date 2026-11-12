@@ -125,10 +125,16 @@ export function createBookingService(repository) {
       // Return just the amount so the frontend can show a confirm dialog
       return { refundAmountCents };
     },
-
+    async getUserBookings(userId) {
+      // We will need to add this to sqlite.js as well (see below)
+      return await repository.getBookingsByUserId(userId);
+    },
     // ==========================================
     // 4. CANCEL BOOKING (Updated for Build 8)
     // ==========================================
+        async getUserBookings(userId) {
+      return await repository.getBookingsByUserId(userId);
+    },
     async cancelBooking(reference, userId) {
       const booking = await repository.getBookingByReference(reference);
       if (!booking) throw new DomainError('NOT_FOUND', 'Booking not found');

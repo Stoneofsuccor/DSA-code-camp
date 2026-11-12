@@ -4,25 +4,30 @@ import { sendError, serveStatic, readJsonBody } from './http/app.js';
 import { config } from './config.js';
 import { DomainError } from './domain/errors.js';
 
-// --- SQLITE SETUP ---
+// Database and Repositories
 import { createDatabaseConnection } from './db/connection.js';
 import { createSqliteRepository } from './repositories/sqlite.js';
 
-// --- SERVICES SETUP ---
+// Services
 import { createEventService } from './services/eventService.js';
 import { createBookingService } from './services/bookingService.js';
-import { createAuthService } from './services/authService.js'; // Build 7
-import { createWaitlistService } from './services/waitlistService.js'; // Build 8
-import { requireUser, requireRole } from './http/guards.js'; // Build 7
-import { createMaintenanceJob } from './jobs/maintenance.js'; // Build 8
+import { createAuthService } from './services/authService.js';
+import { createWaitlistService } from './services/waitlistService.js';
+import { createCheckinService } from './services/checkinService.js';
 
-// Initialize DB and Services
+// Guards, Jobs, and Tokens
+import { requireUser, requireRole } from './http/guards.js';
+import { createMaintenanceJob } from './jobs/maintenance.js';
+import { signTicket, verifyTicket } from './lib/ticketToken.js';
+
 const db = createDatabaseConnection('database.sqlite');
 const repo = createSqliteRepository(db);
+
 const eventService = createEventService(repo);
 const bookingService = createBookingService(repo);
-const authService = createAuthService(repo); // Build 7
-const waitlistService = createWaitlistService(repo); // Build 8
+const authService = createAuthService(repo);
+const waitlistService = createWaitlistService(repo);
+const checkinService = createCheckinService(repo);
 
 const router = createRouter();
 
@@ -33,7 +38,7 @@ router.get('/health', (req, res) => {
   res.end(JSON.stringify({ status: 'ok' }));
 });
 
-// --- BUILD 7: AUTH ROUTES ---
+// Auth
 router.post('/api/auth/signup', async (req, res) => {
   const body = await readJsonBody(req);
   const result = await authService.signup(body.email, body.password, body.role);
@@ -48,23 +53,22 @@ router.post('/api/auth/login', async (req, res) => {
   res.end(JSON.stringify(result));
 });
 
-router.get('/api/events/:id', async (req, res) => {
-  const event = await eventService.getEvent(req.params.id);
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(event));
-});
-
 router.get('/api/auth/me', async (req, res) => {
   const user = requireUser(req);
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(user));
 });
 
-// --- BUILD 4: EVENT ROUTES ---
+// Events
+router.get('/api/events/:id', async (req, res) => {
+  const event = await eventService.getEvent(req.params.id);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(event));
+});
+
 router.post('/api/events', async (req, res) => {
-  const user = requireRole(req, ['organizer']); // Only organizers can create
+  const user = requireRole(req, ['organizer']);
   const body = await readJsonBody(req);
-  // Note: we are passing user.id to link the event to the organizer
   const event = await eventService.createEvent(body.title, body.city, body.venue, body.date, user.id);
   res.writeHead(201, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(event));
@@ -91,13 +95,20 @@ router.get('/api/events', async (req, res) => {
   res.end(JSON.stringify(results));
 });
 
-// --- BUILD 4 & 8: BOOKING ROUTES ---
+// Bookings
 router.post('/api/bookings', async (req, res) => {
-  const user = requireUser(req); // Replaces x-user-id
+  const user = requireUser(req);
   const body = await readJsonBody(req);
   const booking = await bookingService.bookTickets(body.eventId, body.tierId, body.quantity, user.id);
   res.writeHead(201, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(booking));
+});
+
+router.get('/api/bookings/my', async (req, res) => {
+  const user = requireUser(req);
+  const bookings = await bookingService.getUserBookings(user.id);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(bookings));
 });
 
 router.post('/api/bookings/:reference/pay', async (req, res) => {
@@ -121,7 +132,30 @@ router.post('/api/bookings/:reference/cancel', async (req, res) => {
   res.end(JSON.stringify(booking));
 });
 
-// --- BUILD 8: WAITLIST ROUTES ---
+// Ticket Token & Check-in
+router.get('/api/bookings/:reference/ticket-token', async (req, res) => {
+  const user = requireUser(req);
+  // Ensure the user owns the booking
+  await bookingService.getBookingForRefund(req.params.reference, user.id); 
+  
+  // Generate the secure token
+  const ticketToken = signTicket(req.params.reference);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ticketToken }));
+});
+
+router.post('/api/checkin', async (req, res) => {
+  const user = requireRole(req, ['staff']);
+  const body = await readJsonBody(req);
+  
+  const reference = verifyTicket(body.ticketToken);
+  const result = await checkinService.checkIn(reference);
+  
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(result));
+});
+
+// Waitlist
 router.post('/api/waitlist', async (req, res) => {
   const user = requireUser(req);
   const body = await readJsonBody(req);
@@ -137,17 +171,20 @@ router.post('/api/waitlist/:id/accept', async (req, res) => {
   res.end(JSON.stringify({ success: true }));
 });
 
-
 // --- SERVER STARTUP ---
-
-// Start the background maintenance job (Build 8)
 const maintenanceJob = createMaintenanceJob(repo);
 setInterval(() => {
   maintenanceJob.run().catch(console.error);
-}, 60 * 1000); // Run every minute
+}, 60 * 1000);
 
 const server = createServer(async (req, res) => {
   try {
+    // Security Headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline';");
+
     const handledByApi = await router.handle(req, res);
     if (handledByApi !== false) return;
 

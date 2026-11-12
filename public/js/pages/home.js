@@ -12,10 +12,26 @@ const navLinks = document.getElementById('nav-links');
 
 if (userStr) {
   const user = JSON.parse(userStr);
+  let linksHTML = '';
+  
+  // Only attendees see "My Tickets"
+  if (user.role === 'attendee') {
+    linksHTML += `<a href="/tickets.html" style="color: white; margin-right: 1rem; text-decoration: none;">My Tickets</a>`;
+  }
+  
+  // Only organizers see "Dashboard"
+  if (user.role === 'organizer') {
+    linksHTML += `<a href="/organizer.html" style="color: white; margin-right: 1rem; text-decoration: none;">Dashboard</a>`;
+  }
+  
+  // Only staff see "Check-in"
+  if (user.role === 'staff') {
+    linksHTML += `<a href="/checkin.html" style="color: white; margin-right: 1rem; text-decoration: none;">Staff Check-In</a>`;
+  }
+
   navLinks.innerHTML = `
-    <a href="/tickets.html" style="color: white; margin-right: 1rem; text-decoration: none;">My Tickets</a>
-    <a href="/organizer.html" style="color: white; margin-right: 1rem; text-decoration: none;">Dashboard</a>
-    <span style="color: #93c5fd; margin-right: 1rem;">Hi, ${user.email.split('@')[0]}</span>
+    ${linksHTML}
+    <span style="color: #93c5fd; margin-right: 1rem;">Hi, ${user.email.split('@')[0]} (${user.role})</span>
     <button id="logout-btn" style="background: transparent; border: 1px solid white; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Logout</button>
   `;
   
@@ -24,7 +40,6 @@ if (userStr) {
     window.location.href = '/login.html';
   });
 }
-
 async function loadEvents() {
   const criteria = {
     q: searchInput.value || '',

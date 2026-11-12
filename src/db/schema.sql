@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   status TEXT NOT NULL DEFAULT 'pending',
   created_at INTEGER,
   refunded_amount_cents INTEGER DEFAULT 0,
+  checked_in_at INTEGER, -- <-- ADD THIS LINE
   FOREIGN KEY (event_id) REFERENCES events(id),
   FOREIGN KEY (tier_id) REFERENCES ticket_tiers(id)
 );

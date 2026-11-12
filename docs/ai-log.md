@@ -45,3 +45,10 @@ As stated in your course README: *"The AI writing the code is not the skill bein
 - **What I asked:** Create the HTML, CSS, and ES modules for the frontend, using mock data for events and payments.
 - **What came back:** The DOM structure, styles, API mock layer, and UI logic for home and event pages.
 - **What was wrong (or "nothing"):** The initial static file server code triggered a `FORBIDDEN` error on Windows due to path normalization. I fixed this by using `normalize()` and `resolve()` in `app.js`. I also had a typo in my `styles.css` filename which the server logs helped me find.
+
+## Build 9
+
+### Prompt 1: QR check-in, CI, security, demo-ready
+- **What I asked:** Add secure QR check-in, security headers, rate limiting, and GitHub Actions.
+- **What came back:** The ticket token generator, checkin service, atomic database updates, and CI workflow.
+- **What was wrong (or "nothing"):** The Content Security Policy (CSP) blocked our inline script in `checkin.html`, so I had to move it to an external file. Also, the initial ticket tokens were missing the booking reference (showing `undefined`), which I fixed by ensuring `signTicket` received `req.params.reference` directly. Finally, copy-pasting the `tickets.js` file mangled the backticks, so I rewrote it using standard string concatenation.

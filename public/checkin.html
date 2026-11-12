@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Staff Check-In</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Staff Check-In</h1>
+    <a href="/" style="color: white; margin-left: 1rem; text-decoration: none;">Home</a>
+  </header>
+  
+  <main class="auth-container">
+    <h2>Scan Ticket</h2>
+    <p style="margin-bottom: 1rem; font-size: 0.9rem;">Paste the attendee's ticket token below.</p>
+    
+    <div class="form-group">
+      <label for="token-input">Ticket Token</label>
+      <textarea id="token-input" rows="4" style="width: 100%; padding: 0.5rem; font-family: monospace;" placeholder="Paste token here..."></textarea>
+    </div>
+    
+    <button id="checkin-btn" class="btn" style="width: 100%; margin-top: 1rem;">Verify & Check-in</button>
+    
+    <p id="result-msg" style="margin-top: 1rem; font-weight: bold; text-align: center;"></p>
+  </main>
+
+  <!-- Load the script as a module -->
+  <script type="module" src="/js/pages/checkin.js"></script>
+</body>
+</html>
