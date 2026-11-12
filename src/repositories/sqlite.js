@@ -12,7 +12,7 @@ export function createSqliteRepository(db) {
     },
 
     async getEventById(id) {
-      const stmt = db.prepare('SELECT * FROM events WHERE id = ?');
+     const stmt = db.prepare('SELECT * FROM events WHERE id = ?');
       const row = stmt.get(id);
       if (!row) return null;
       
@@ -50,7 +50,22 @@ export function createSqliteRepository(db) {
       const stmt = db.prepare('SELECT * FROM ticket_tiers WHERE id = ?');
       return stmt.get(tierId);
     },
-
+    async getBookingsByUserId(userId) {
+      const stmt = db.prepare('SELECT * FROM bookings WHERE user_id = ?');
+      const rows = stmt.all(userId);
+      
+      // Map snake_case to camelCase so the frontend is happy
+      return rows.map(row => ({
+        reference: row.reference,
+        eventId: row.event_id,
+        tierId: row.tier_id,
+        userId: row.user_id,
+        quantity: row.quantity,
+        amountCents: row.amount_cents,
+        status: row.status,
+        createdAt: row.created_at
+      }));
+    },
     async reserveSeatAtomic(tierId, quantity) {
       const stmt = db.prepare(`
         UPDATE ticket_tiers 
@@ -79,7 +94,7 @@ export function createSqliteRepository(db) {
       return booking;
     },
 
-    async getBookingByReference(reference) {
+        async getBookingByReference(reference) {
       const stmt = db.prepare('SELECT * FROM bookings WHERE reference = ?');
       const row = stmt.get(reference);
       if (!row) return null;
@@ -91,14 +106,31 @@ export function createSqliteRepository(db) {
         quantity: row.quantity,
         amountCents: row.amount_cents,
         status: row.status,
-        createdAt: row.created_at
+        createdAt: row.created_at,
+        checkedInAt: row.checked_in_at // <-- ADD THIS LINE
       };
+    },
+
+    async getBookingsByUserId(userId) {
+      const stmt = db.prepare('SELECT * FROM bookings WHERE user_id = ?');
+      return stmt.all(userId);
     },
 
     async updateBookingStatus(reference, status) {
       const stmt = db.prepare('UPDATE bookings SET status = ? WHERE reference = ?');
       stmt.run(status, reference);
     },
+
+    async atomicCheckIn(reference, timestamp) {
+      // The WHERE clause ensures it ONLY updates if the status is currently 'paid'
+      const stmt = db.prepare(`
+        UPDATE bookings 
+        SET status = 'checked_in', checked_in_at = ? 
+        WHERE reference = ? AND status = 'paid'
+      `);
+      const result = stmt.run(timestamp, reference);
+      return result.changes > 0; // True if we won the race, false if someone else did
+    },    
 
     async getExpiredPendingBookings(cutoffTime) {
       const stmt = db.prepare(`

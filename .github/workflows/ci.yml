@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "build-*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 22.13
+      uses: actions/setup-node@v3
+      with:
+        node-version: '22.13'
+        
+    - name: Run tests
+      run: npm test
+      env:
+        JWT_SECRET: testing-secret
+        TICKET_SECRET: testing-ticket-secret
