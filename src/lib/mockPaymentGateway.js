@@ -9,5 +9,10 @@ export const mockPaymentGateway = {
     }
     
     return { success: true, transactionId: crypto.randomUUID() };
+  },
+// In src/lib/mockPaymentGateway.js, add to the object:
+  async refund(reference, amountCents) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return { success: true, reference, amountCents };
   }
 };

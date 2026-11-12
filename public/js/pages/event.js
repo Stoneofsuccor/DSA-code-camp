@@ -33,24 +33,36 @@ async function init() {
   }
 }
 
+// Inside public/js/pages/event.js
+
 function renderTiers(tiers) {
   tierList.innerHTML = '';
   
-  tiers.forEach(tier => {
-    const isSoldOut = tier.seatsLeft <= 0;
+  // The API sends an object/array of tiers depending on how it's serialized
+  // We need to make sure we loop through them correctly
+  const tierArray = Array.isArray(tiers) ? tiers : Object.values(tiers || {});
+
+  tierArray.forEach(tier => {
+    // The database uses 'capacity' and 'sold'. We calculate 'seatsLeft' here.
+    const sold = tier.sold || 0;
+    const seatsLeft = tier.capacity - sold;
+    const isSoldOut = seatsLeft <= 0;
+    
+    // The database uses 'price_in_cents' (snake_case). 
+    // If it's memory, it might be 'priceInCents'. We handle both.
+    const price = tier.price_in_cents !== undefined ? tier.price_in_cents : tier.priceInCents;
     
     const container = el('div', { className: `tier-card ${isSoldOut ? 'sold-out' : ''}` }, [
       el('h3', { textContent: tier.name }),
-      el('p', { textContent: formatMoney(tier.priceInCents) }),
-      el('p', { textContent: isSoldOut ? 'Sold Out' : `${tier.seatsLeft} seats left` }),
+      el('p', { textContent: formatMoney(price) }),
+      el('p', { textContent: isSoldOut ? 'Sold Out' : `${seatsLeft} seats left` }),
     ]);
 
     if (!isSoldOut) {
       const btn = el('button', { textContent: 'Book Tickets' });
-      btn.addEventListener('click', () => handleBook(tier));
+      btn.addEventListener('click', () => handleBook({ ...tier, priceInCents: price }));
       container.appendChild(btn);
     } else {
-      // Rule: Sold-out button is disabled
       container.appendChild(el('button', { disabled: 'true', textContent: 'Sold Out' }));
     }
 
@@ -100,7 +112,7 @@ payBtn.addEventListener('click', async () => {
   payBtn.textContent = 'Processing...';
 
   try {
-    await pay(currentBooking.reference, '4242 4242 4242 0000');
+    await pay(currentBooking.reference, '4242 4242 4242 1111');
     clearInterval(countdownInterval);
     alert('Payment Successful! Booking Reference: ' + currentBooking.reference);
     window.location.href = '/';

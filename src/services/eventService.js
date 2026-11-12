@@ -1,25 +1,41 @@
 import { DomainError } from '../domain/errors.js';
-import { createEvent, addTier, publishEvent, listEventSummaries } from '../domain/inventory.js';
 import { searchEvents } from '../domain/eventSearch.js';
 
 export function createEventService(repository) {
   return {
-    async createEvent(title, city, venue, date) {
-      // We can't easily use the old createEvent because it expects the whole store.
-      // So we build the event object manually here using domain validation rules.
+    // Added ownerId so we know which organizer owns this event
+    async createEvent(title, city, venue, date, ownerId) {
       if (!title || !city || !date) throw new DomainError('VALIDATION', 'Missing fields');
       
       const event = {
-        id: crypto.randomUUID(), // Using built-in crypto
+        id: crypto.randomUUID(),
         title, city, venue, date,
         status: 'draft',
+        ownerId, // <-- Save the organizer's ID here
         tiers: new Map()
       };
       
       await repository.saveEvent(event);
       return event;
     },
+    async getEvent(eventId) {
+      const event = await repository.getEventById(eventId);
+      if (!event) throw new DomainError('NOT_FOUND', 'Event not found');
+      
+      // Convert the Map of tiers to an array so the frontend can easily loop through it
+      const tiersArray = Array.from(event.tiers.values()).map(t => ({
+        id: t.id,
+        name: t.name,
+        priceInCents: t.price_in_cents !== undefined ? t.price_in_cents : t.priceInCents,
+        capacity: t.capacity,
+        sold: t.sold !== undefined ? t.sold : t.booked
+      }));
 
+      return {
+        ...event,
+        tiers: tiersArray // Return as a clean array
+      };
+    },
     async addTier(eventId, tierName, priceInCents, capacity) {
       const event = await repository.getEventById(eventId);
       if (!event) throw new DomainError('NOT_FOUND', 'Event not found');
@@ -33,21 +49,27 @@ export function createEventService(repository) {
 
       const tier = {
         id: crypto.randomUUID(),
+        eventId: event.id,
         name: tierName,
         priceInCents,
         capacity,
-        booked: 0
+        sold: 0 // <-- CHANGED from booked: 0 to sold: 0 (to match SQLite)
       };
-      event.tiers.set(tier.id, tier);
       
-      await repository.saveEvent(event);
+      // We save the tier directly to the repository (SQLite) 
+      // instead of using event.tiers.set() because SQLite needs a separate table insert.
+      await repository.saveTier(tier);
       return tier;
     },
 
     async publish(eventId) {
       const event = await repository.getEventById(eventId);
       if (!event) throw new DomainError('NOT_FOUND', 'Event not found');
-      if (event.tiers.size === 0) throw new DomainError('INVALID_STATE', 'Cannot publish with no tiers');
+      
+      // In SQLite, event.tiers is a Map of the tiers, so we check its size
+      if (!event.tiers || event.tiers.size === 0) {
+        throw new DomainError('INVALID_STATE', 'Cannot publish with no tiers');
+      }
       
       event.status = 'published';
       await repository.saveEvent(event);
@@ -55,31 +77,38 @@ export function createEventService(repository) {
     },
 
     async search(queryParams) {
-      // 1. Get all events and convert to summaries (like we did in Build 2)
+      // 1. Get all events
       const allEvents = await repository.getAllEvents();
-      // We reuse the domain logic for summaries, but we need to adapt it slightly 
-      // since our domain function expects the old store format.
-      // For simplicity, we'll do a quick summary generation here.
+      
+      // 2. Map to summaries
       const summaries = allEvents.map(e => {
         let cheapest = null;
         let seatsLeft = 0;
-        for (const tier of e.tiers.values()) {
-          seatsLeft += (tier.capacity - tier.booked);
-          if (cheapest === null || tier.priceInCents < cheapest) cheapest = tier.priceInCents;
+        
+        // In SQLite, e.tiers is a Map (returned by getEventById), but getAllEvents 
+        // might return an array of tiers. Let's handle both just in case.
+        const tiers = e.tiers instanceof Map ? Array.from(e.tiers.values()) : (e.tiers || []);
+        
+        for (const tier of tiers) {
+          // Note: SQLite uses 'sold' and 'price_in_cents', memory uses 'booked' and 'priceInCents'
+          const sold = tier.sold !== undefined ? tier.sold : tier.booked;
+          const price = tier.price_in_cents !== undefined ? tier.price_in_cents : tier.priceInCents;
+          
+          seatsLeft += (tier.capacity - sold);
+          if (cheapest === null || price < cheapest) cheapest = price;
         }
+        
         return {
           id: e.id, title: e.title, city: e.city, venue: e.venue, date: e.date,
-          cheapestPriceCents: cheapest, seatsLeft, hasTiers: e.tiers.size > 0
+          cheapestPriceCents: cheapest, seatsLeft, hasTiers: tiers.length > 0,
+          status: e.status // Keep status so we can filter drafts
         };
       });
 
-      // 2. Filter out drafts
-      const published = summaries.filter(s => {
-        const originalEvent = allEvents.find(e => e.id === s.id);
-        return originalEvent.status === 'published';
-      });
+      // 3. Filter out drafts
+      const published = summaries.filter(s => s.status === 'published');
 
-      // 3. Use domain search
+      // 4. Use domain search
       return searchEvents(published, queryParams, queryParams.sortBy || 'date');
     }
   };
